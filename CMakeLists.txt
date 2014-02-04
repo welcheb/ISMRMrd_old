@@ -36,9 +36,6 @@ target_link_libraries(dummy ${XERCESC_LIBRARIES})
 # Add library ismrmrd
 add_library(ismrmrd SHARED ismrmrd_hdf5.cpp)
 
-# Process the MATLAB files
-file(GLOB MatlabMFiles ${CMAKE_SOURCE_DIR}/matlab/+ismrmrd/*.m)
-
 #The findHDF5.cmake does not work very well on Windows, let's help it out
 IF(WIN32)
 	SET(HDF5_LIB_DIR ${HDF5_INCLUDE_DIR}/../lib)
@@ -57,12 +54,13 @@ ENDIF(WIN32)
 
 INSTALL(FILES ismrmrd.h ismrmrd_hdf5.h ismrmrd_hdf5_datatypes.h ismrmrd_export.h DESTINATION include)
 INSTALL(FILES schema/ismrmrd.xsd ${XSDS_SOURCES} DESTINATION schema)
-INSTALL(FILES cmake/FindIsmrmrd.cmake cmake/FindFFTW3.cmake cmake/FindXSD.cmake cmake/FindXercesC.cmake DESTINATION cmake)
+INSTALL(FILES cmake/FindIsmrmrd.cmake cmake/FindFFTW3.cmake cmake/FindXSD.cmake
+        cmake/FindXercesC.cmake cmake/FindNumPy.cmake DESTINATION cmake)
 INSTALL(TARGETS ismrmrd DESTINATION lib)
-INSTALL(FILES ${MatlabMFiles} DESTINATION matlab/+ismrmrd)
 
 add_subdirectory(examples/c++)
 add_subdirectory(utilities)
 add_subdirectory(tests)
 add_subdirectory(doc)
+add_subdirectory(matlab)
 add_subdirectory(bindings)
