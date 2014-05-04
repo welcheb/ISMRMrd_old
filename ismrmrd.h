@@ -95,18 +95,17 @@ enum AcquisitionFlags {
     ACQ_LAST_IN_SET                             = 16,
     ACQ_FIRST_IN_SEGMENT                        = 17,
     ACQ_LAST_IN_SEGMENT                         = 18,
-
-    ACQ_LAST_IN_MEASUREMENT                     = 25,
-
     ACQ_IS_NOISE_MEASUREMENT                    = 19,
     ACQ_IS_PARALLEL_CALIBRATION                 = 20,
     ACQ_IS_PARALLEL_CALIBRATION_AND_IMAGING     = 21,
     ACQ_IS_REVERSE                              = 22,
     ACQ_IS_NAVIGATION_DATA                      = 23,
     ACQ_IS_PHASECORR_DATA                       = 24,
-    ACQ_IS_RTFEEDBACK_DATA                      = 25,
+    ACQ_LAST_IN_MEASUREMENT                     = 25,
     ACQ_IS_HPFEEDBACK_DATA                      = 26,
     ACQ_IS_DUMMYSCAN_DATA                       = 27,
+    ACQ_IS_RTFEEDBACK_DATA                      = 28,
+    ACQ_IS_SURFACECOILCORRECTIONSCAN_DATA       = 29,
 
     ACQ_USER1                                   = 57,
     ACQ_USER2                                   = 58,
@@ -1110,9 +1109,9 @@ static void directions_to_quaternion(float read_dir[3], float phase_dir[3],
     float r21 = read_dir[1], r22 = phase_dir[1], r23 = slice_dir[1];
     float r31 = read_dir[2], r32 = phase_dir[2], r33 = slice_dir[2];
 
-    float a = 1, b = 0, c = 0, d = 0, s = 0;
-    float trace = 0;
-    float xd, yd, zd;
+    double a = 1, b = 0, c = 0, d = 0, s = 0;
+    double trace = 0;
+    double xd, yd, zd;
 
     /* verify the sign of the rotation*/
     if (sign_of_directions(read_dir, phase_dir, slice_dir) < 0) {
@@ -1171,7 +1170,7 @@ static void directions_to_quaternion(float read_dir[3], float phase_dir[3],
         }
     }
 
-    quat[0] = a; quat[1] = b; quat[2] = c; quat[3] = d;
+    quat[0] = (float)a; quat[1] = (float)b; quat[2] = (float)c; quat[3] = (float)d;
 }
 
 /**
@@ -1185,17 +1184,17 @@ static void quaternion_to_directions(float quat[4], float read_dir[3],
 {
     float a = quat[0], b = quat[1], c = quat[2], d = quat[3];
 
-    read_dir[0]  = 1.0 - 2.0 * ( b*b + c*c );
-    phase_dir[0] = 2.0 * ( a*b - c*d );
-    slice_dir[0] = 2.0 * ( a*c + b*d );
+    read_dir[0]  = 1.0f - 2.0f * ( b*b + c*c );
+    phase_dir[0] = 2.0f * ( a*b - c*d );
+    slice_dir[0] = 2.0f * ( a*c + b*d );
 
-    read_dir[1]  = 2.0 * ( a*b + c*d );
-    phase_dir[1] = 1.0 - 2.0 * ( a*a + c*c );
-    slice_dir[1] = 2.0 * ( b*c - a*d );
+    read_dir[1]  = 2.0f * ( a*b + c*d );
+    phase_dir[1] = 1.0f - 2.0f * ( a*a + c*c );
+    slice_dir[1] = 2.0f * ( b*c - a*d );
 
-    read_dir[2]  = 2.0 * ( a*c - b*d );
-    phase_dir[2] = 2.0 * ( b*c + a*d );
-    slice_dir[2] = 1.0 - 2.0 * ( a*a + b*b );
+    read_dir[2]  = 2.0f * ( a*c - b*d );
+    phase_dir[2] = 2.0f * ( b*c + a*d );
+    slice_dir[2] = 1.0f - 2.0f * ( a*a + b*b );
 }
 
 #ifdef __cplusplus

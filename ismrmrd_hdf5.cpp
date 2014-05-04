@@ -18,11 +18,14 @@ int IsmrmrdDataset::openHDF5File()
 				std::cerr << "File \"" << filename_ << "\" is not an HDF file file" << std::endl;
 				return -1;
 			}
-			file_ = boost::shared_ptr<H5File>(new H5File(filename_, H5F_ACC_RDWR));
-
+			file_ = boost::shared_ptr<H5File>(new H5File(filename_.c_str(), H5F_ACC_RDWR));
 		} catch (...) {
-			std::cerr << "Failed to open HDF5 file." << std::endl;
-			return -1;
+                    try {
+                        file_ = boost::shared_ptr<H5File>(new H5File(filename_.c_str(), H5F_ACC_RDONLY));
+                    } catch (...) {
+                        std::cerr << "Failed to open HDF5 file." << std::endl;
+                        return -1;
+                    }
 		}
 		file_open_ = true;
 	} else if (create_file_if_needed_){
@@ -49,6 +52,20 @@ int IsmrmrdDataset::openHDF5File()
 
 	return 0;
 }
+
+void IsmrmrdDataset::close(void)
+{
+    if (file_open_) {
+        dataset_->flush(H5F_SCOPE_LOCAL);
+        dataset_->close();
+        dataset_.reset();
+        file_->flush(H5F_SCOPE_LOCAL);
+        file_->close();
+        file_.reset();
+        file_open_ = false;
+    }
+}
+
 
 
 bool IsmrmrdDataset::linkExists(const char* name)
@@ -578,6 +595,101 @@ template EXPORTISMRMRD boost::shared_ptr< Image<unsigned short> > IsmrmrdDataset
 template EXPORTISMRMRD boost::shared_ptr< Image< std::complex<float> > > IsmrmrdDataset::readImage(const char* varname, unsigned long index);
 template EXPORTISMRMRD boost::shared_ptr< Image< std::complex<double> > > IsmrmrdDataset::readImage(const char* varname, unsigned long index);
 
+int IsmrmrdDataset::appendImageAttrib(std::string& a, const char* varname)
+{
+	std::string data_path = groupname_ + std::string("/") + std::string(varname);
+
+	boost::shared_ptr<DataSet> dataset;
+    boost::shared_ptr<DataType> datatype = getIsmrmrdHDF5Type<std::string>();
+
+	std::vector<hsize_t> dims;
+	std::vector<hsize_t> max_dims;
+	if (!linkExists(data_path.c_str()))
+    {
+		std::vector<hsize_t> dims(1,1);
+		std::vector<hsize_t> max_dims(1,1);
+
+		try
+        {
+			if (createGroupForDataset(groupname_.c_str()) < 0)
+            {
+				std::cout << "Failed to create group in HDF 5 file." << std::endl;
+				return -1;
+			}
+
+			DataSpace mspace1( dims.size(), &dims[0], &max_dims[0]);
+
+			DSetCreatPropList cparms;
+			cparms.setChunk( dims.size(), &dims[0] );
+
+			dataset = boost::shared_ptr<DataSet>(new DataSet(file_->createDataSet( data_path.c_str(), *datatype, mspace1, cparms)));
+			mspace1 = dataset->getSpace();
+
+			DataSpace mspace2( dims.size(), &dims[0] );
+
+			std::vector<hsize_t> offset(dims.size());
+			mspace1.selectHyperslab(H5S_SELECT_SET, &dims[0], &offset[0]);
+			dataset->write( a, *datatype, mspace2, mspace1 );
+
+		} catch( Exception& e ) {
+			std::cerr << "Exception caught while creating HDF5 dataset" << std::endl;
+			std::cerr << e.getDetailMsg() << std::endl;
+			return -1;
+		}
+	}
+    else
+    {
+		try
+        {  // to determine if the dataset exists in the group
+			dataset = boost::shared_ptr<DataSet>(new DataSet(file_->openDataSet(data_path.c_str())));
+
+			DataType mtype = dataset->getDataType();
+			if (!(mtype == (*datatype))) {
+				std::cout << "Attempting to append data to HDF5 dataset with the wrong type" << std::endl;
+				return -1;
+			}
+
+            std::vector<hsize_t> dims(1,1);
+		    std::vector<hsize_t> max_dims(1,1);
+            DataSpace mspace2( dims.size(), &dims[0] );
+
+            DataSpace mspace1( dims.size(), &dims[0], &max_dims[0]);
+            mspace1 = dataset->getSpace();
+
+			std::vector<hsize_t> offset(dims.size());
+			mspace1.selectHyperslab(H5S_SELECT_SET, &dims[0], &offset[0]);
+			dataset->write( a, *datatype, mspace2, mspace1 );
+
+			/*DataSpace mspace1 = dataset->getSpace();
+			int rank = mspace1.getSimpleExtentNdims();
+			std::vector<hsize_t> ddims(rank,0);
+			mspace1.getSimpleExtentDims(&ddims[0], NULL);
+
+			dims.push_back(1);
+			for (unsigned int i = 1; i < ddims.size(); i++)
+            {
+				dims.push_back(ddims[i]);
+			}
+
+			std::vector<hsize_t> offset(rank, 0);
+			offset[0] = ddims[0];
+
+			DataSpace fspace2 = dataset->getSpace();
+			fspace2.selectHyperslab( H5S_SELECT_SET, &dims[0], &offset[0] );
+
+			DataSpace mspace2( rank, &dims[0] );
+
+			dataset->write( a, *datatype, mspace2, fspace2 );*/
+
+		 }
+		 catch( FileIException& not_found_error)
+		 {
+			 std::cout << "Dataset is not found. At this point, it should have been created!" << std::endl;
+			 return -1;
+		 }
+	}
+	return 0;
+}
 
 HDF5Lock* HDF5Lock::instance()
 {

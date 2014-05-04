@@ -87,6 +87,15 @@ public:
 		data_path_ = groupname_ + std::string("/data");
  	}
 
+        /**
+         * Closes all references to the underlying HDF5 file.
+         *
+         *  This method does not NEED to be called. It is most useful in
+         *  a Python interpreter when a dataset instance has not been
+         *  garbage collected but another process needs to read the HDF5 file.
+         */
+        void close(void);
+
 	/**
 	 *   Appends and NMR/MRI acquisition to the data set.
 	 *
@@ -175,6 +184,10 @@ public:
 	template <typename T> boost::shared_ptr< NDArrayContainer<T> > readArray(const char* varname, unsigned long index = 0);
 
 
+        /**
+	 *  This function appends the meta attribute information to the data set. The meta attributes are stored as an xml file.
+	 */
+	int appendImageAttrib(std::string& a, const char* varname);
 
 protected:
 	int openHDF5File();

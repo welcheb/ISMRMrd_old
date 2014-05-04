@@ -4,11 +4,15 @@ project(ISMRMRD)
 enable_testing()
 
 if (WIN32)
-ADD_DEFINITIONS(-DWIN32 -D_WIN32 -D_WINDOWS)
-ADD_DEFINITIONS(-DUNICODE -D_UNICODE)
-ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3")
+    ADD_DEFINITIONS(-DWIN32 -D_WIN32 -D_WINDOWS)
+    ADD_DEFINITIONS(-DUNICODE -D_UNICODE)
+    ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
+    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3")
+    SET (CMAKE_EXE_LINKER_FLAGS_DEBUG "/debug /INCREMENTAL:NO")
+    SET (CMAKE_SHARED_LINKER_FLAGS_DEBUG "/debug /INCREMENTAL:NO")
+    SET (CMAKE_STATIC_LINKER_FLAGS_DEBUG "/debug /INCREMENTAL:NO")
+    SET (CMAKE_MODULE_LINKER_FLAGS_DEBUG "/debug /INCREMENTAL:NO")
 endif (WIN32)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/ismrmrd)
@@ -18,7 +22,13 @@ find_package(XSD REQUIRED)
 find_package(XercesC REQUIRED)
 
 set(Boost_NO_BOOST_CMAKE ON)
-find_package(Boost COMPONENTS thread system REQUIRED)
+if(WIN32)
+  add_definitions( -DBOOST_ALL_NO_LIB )
+  add_definitions( -DBOOST_ALL_DYN_LINK )
+endif(WIN32)
+
+find_package(Boost COMPONENTS thread system program_options REQUIRED)
+
 find_package(HDF5 1.8 COMPONENTS C CXX REQUIRED)
 
 #Process the XSD files
@@ -34,13 +44,12 @@ add_library(dummy SHARED ${XSDS_SOURCES})
 target_link_libraries(dummy ${XERCESC_LIBRARIES})
 
 # Add library ismrmrd
-add_library(ismrmrd SHARED ismrmrd_hdf5.cpp)
+add_library(ismrmrd SHARED ismrmrd_hdf5.cpp schema/ismrmrd.xsd)
 
 #The findHDF5.cmake does not work very well on Windows, let's help it out
 IF(WIN32)
-    target_link_libraries(ismrmrd optimized ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_hdf5_cpp_LIBRARY_RELEASE})
-    target_link_libraries(ismrmrd debug ${HDF5_hdf5_LIBRARY_DEBUG} ${HDF5_hdf5_cpp_LIBRARY_DEBUG})
-
+    target_link_libraries(ismrmrd optimized ${HDF5_hdf5_LIBRARY_RELEASE} optimized ${HDF5_hdf5_cpp_LIBRARY_RELEASE})
+    target_link_libraries(ismrmrd debug ${HDF5_hdf5_LIBRARY_DEBUG} debug ${HDF5_hdf5_cpp_LIBRARY_DEBUG})
     target_link_libraries(ismrmrd ${Boost_LIBRARIES})
 ELSE (WIN32)
     target_link_libraries(ismrmrd ${HDF5_LIBRARIES} ${Boost_LIBRARIES})
